@@ -213,7 +213,6 @@ class Collector:
         try:
             self.nestSSH.connect(self.sshconfig['host'],
                                 username=self.sshconfig['user'],
-                                # password=self.sshconfig['password'],
                                 port=self.sshconfig['port'],
                                 timeout=self.sshconfig['timeout']                           
                                 )

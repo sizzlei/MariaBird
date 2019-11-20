@@ -3,7 +3,6 @@ import BirdNest
 import time
 import sys
 import threading
-import os
 
 # Module
 netCnf = BirdNest.configure('bird.cnf')
@@ -93,50 +92,11 @@ def BirdDaddy():
         else:
             time.sleep(1)
 
-def Birdhouse():
+if __name__ == "__main__":
     # Thread Configure
-    threadMommy = threading.Thread(target=BirdMommy)          
-    threadDaddy = threading.Thread(target=BirdDaddy)      
+    threadMommy = threading.Thread(target=BirdMommy)
+    threadDaddy = threading.Thread(target=BirdDaddy)
 
     # Thread Start
     threadMommy.start()
     threadDaddy.start()
-
-
-pidFile = '.mariaBird.pid'
-if __name__ == "__main__":
-    if sys.argv[1] == 'start':
-        try:
-            f = open(pidFile,'r')
-            pid = f.read()
-            f.close()
-            if pid:
-                print("already Running Process PID : " + str(pid))
-        except:
-            f = open(pidFile,'w')
-            pid = os.getpid()
-            f.write(str(pid))
-            f.close()
-
-            # Start MariaBird
-            Birdhouse()
-    elif sys.argv[1] == 'stop':
-        try:
-            f = open(pidFile,'r')
-            pid = f.read()
-            f.close()
-
-            killCmd = 'kill ' + pid
-            os.system(killCmd)
-            os.remove(pidFile)
-        except:
-            print("Not Running MariaBird.")
-    elif sys.argv[1] == 'status':
-        try:
-            f = open(pidFile, 'r')
-            pid = f.read()
-            f.close()
-
-            print("PID : " + str(pid))
-        except:
-            print("Not Running MariaBird.")
