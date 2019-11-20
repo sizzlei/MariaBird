@@ -1,0 +1,2 @@
+# MariaBird
+MariaDB Python CDC
