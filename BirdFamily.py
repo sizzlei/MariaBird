@@ -5,7 +5,8 @@ import os
 import sys
 
 # Configure
-config = BirdNest.configure('bird.cnf')
+getConfig = sys.argv[0] + "/bird.cnf"
+config = BirdNest.configure(getConfig)
 logwrite = BirdNest.signlog(config.cdc('CDC_LOG_PATH'),10,10485760)
 eggIdentifier = BirdNest.identifier()
 

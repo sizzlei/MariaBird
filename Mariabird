@@ -14,11 +14,6 @@ case "$1" in
     # stop Daemon
     $python_dir $bird_dir stop
   ;;
-  status|STATUS)
-    echo "Check MariaBird.............."
-    #status Daemon
-    $python_dir $bird_dir status
-  ;;
   *)
     echo "Usage /etc/init.d/MariaBird {start|stop|status}"
   ;;
