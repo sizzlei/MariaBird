@@ -128,8 +128,9 @@ if __name__ == "__main__":
 
             killCmd = 'kill ' + pid
             os.system(killCmd)
+            os.remove(pidFile)
         except:
-            print("Check for Bird PID file.")
+            print("Not Running MariaBird.")
     elif sys.argv[1] == 'status':
         try:
             f = open(pidFile, 'r')
