@@ -18,8 +18,8 @@ CDC_MYSQL_CLIENT_PATH = /home/sigongweb/server/mysql
 CDC_LOG_PATH = /home/sigongweb/server/project/MariaBird/log/bird.log
 CDC_EGG_FILE_PATH = /home/sigongweb/server/project/MariaBird/egg
 SOURCE_BINARY_LOG_PATH = /log/binary_log
-BINARY_FILE = nhomedb04-bin.000090
-BINARY_POSITION = 607497649
+BINARY_FILE = nhomedb04-bin.000202
+BINARY_POSITION = 798199578
 
 [CONDITION]
 DATABASE = nhomedb

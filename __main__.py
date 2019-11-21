@@ -4,7 +4,7 @@ import time
 import sys
 import threading
 import os
-
+from daemonize import Daemonize
 
 
 if __name__ == "__main__":
@@ -106,30 +106,33 @@ if __name__ == "__main__":
         threadMommy.start()
         threadDaddy.start()
 
-    pidFile = sys.argv[0] + "/.mariabird.pid"
+    pidFile = "/tmp/mariabird.pid"
 
     if sys.argv[1] == "start":
         try:
-            f = open(pidFile,'w')
+            f = open(pidFile,'r')
             pid = f.read()
             f.close()
 
-            if pid:
-                print("Already Running MariaBird PID : " + str(pid))
-        except:
-            f = open(pidFile,'w')
-            pid = s.getpid()
+            print("Already Running MariaBird PID : " + str(pid))
+        except Exception as ss:
+            print(ss)
+            # Start Process
+            print("Starting MariaBird........")
+            f = open(pidFile, 'w')
+            pid = os.getpid()
             f.write(str(pid))
             f.close()
 
-            # Start Process
             Birdhouse()
+
     elif sys.argv[1] == "stop":
         try:
             f = open(pidFile,'r')
             pid = f.read()
             f.close()
 
+            print("Stopping MariaBird........")
             killCmd = "kill " + pid
             os.system(killCmd)
             os.remove(pidFile)
