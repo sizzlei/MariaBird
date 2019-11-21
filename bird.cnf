@@ -1,26 +1,26 @@
 [SOURCE_DB]
-IP = 172.16.30.32
-PORT = 3306
-SSHUSER = sigongweb
-SSHPASS = rlk@nho624
-SSHPORT = 22
-DBUSER = cdc_user
-DBPASS = tlrhd@3438
+IP =
+PORT =
+SSHUSER =
+SSHPASS =
+SSHPORT =
+DBUSER =
+DBPASS =
 
 [TARGET_DB]
-IP = 172.16.30.94
-PORT = 3306
-DBUSER = cdc_user
-DBPASS = tlrhd@3438
+IP =
+PORT =
+DBUSER =
+DBPASS =
 
 [CDC]
-CDC_MYSQL_CLIENT_PATH = /home/sigongweb/server/mysql
-CDC_LOG_PATH = /home/sigongweb/server/project/MariaBird/log/bird.log
-CDC_EGG_FILE_PATH = /home/sigongweb/server/project/MariaBird/egg
-SOURCE_BINARY_LOG_PATH = /log/binary_log
-BINARY_FILE = nhomedb04-bin.000202
-BINARY_POSITION = 798199578
+CDC_MYSQL_CLIENT_PATH =
+CDC_LOG_PATH =
+CDC_EGG_FILE_PATH =
+SOURCE_BINARY_LOG_PATH =
+BINARY_FILE =
+BINARY_POSITION =
 
 [CONDITION]
-DATABASE = nhomedb
-TABLES = tz_sulmun_paper,tz_sulmun_question,tz_sulmun_item,tz_sulmun_vote,tz_sulmun_vote_detail,tz_sulmun_summary,tz_sulmun_item_summary,nh_social_content_like,nh_social_mzine,nh_social_mzine_cont,nh_social_mzine_read,nh_social_mzine_read_hist,nh_social_mzine_thumb_url,nh_social_event_store,nh_social_event_tracker,nh_social_alimi,nh_social_dist_lock
+DATABASE =
+TABLES =
