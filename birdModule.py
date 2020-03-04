@@ -4,7 +4,26 @@ import re
 import os
 import sys
 import logzero
+import subprocess
+import json
 
+"""
+Logzero Module Import
+"""
+class logwriter:
+    def __init__(self,file,backCnt):
+        log_format = '%(color)s[%(asctime)s] [%(levelname)s]%(end_color)s %(message)s'
+        formatter = logzero.LogFormatter(fmt=log_format)        
+        self.logger = logzero.setup_default_logger(file,disableStderrLogger=True,formatter=formatter,maxBytes=100000,backupCount=backCnt)
+                
+    def info(self,msg):
+        self.logger.info(msg)
+    def err(self,msg):
+        self.logger.error(msg)
+
+"""
+Configparer Module Import
+"""
 class configure:
     def __init__(self,configPath):
         self.config = configparser.ConfigParser()
@@ -16,7 +35,10 @@ class configure:
             optDic[key] = self.config[sectionName][key]
 
         return optDic
-     
+
+"""
+Source Info Regexp
+"""
 class identifier:
     def __init__(self):
         self.reschema = re.compile(r'[`a-zA-Z0-9_]+[.]+[`a-zA-Z0-9_]+',re.I)
@@ -27,6 +49,9 @@ class identifier:
         returnSchema = mapData.split('.')
         return returnSchema
 
+"""
+Binary Log Event Search
+"""
 class getDBdata:
     def __init__(self,**kwargs):
         self.dbConf = {
@@ -59,9 +84,12 @@ class getDBdata:
         finally:
             conn.close()        
    
+"""
+Binary Log Event Parsing -> Dict
+"""
 class binlogParser:
     def __init__(self,refDB,refTB):
-        self.refTable = refTB.split(',')
+        self.refTable = refTB
         self.refDatabase = refDB
         self.mapParser = identifier()
 
@@ -94,63 +122,207 @@ class binlogParser:
 
         return backLog
 
+"""
+Binary Log Event Get
+"""
 class logDumper:
-    def __init__(self,mysqlPath,logPath,dumpPath):
+    def __init__(self,mysqlPath,logPath):
         self.mysqlClientPath = mysqlPath
         self.binlogPath = logPath
-        self.logDumpPath = dumpPath
 
     def dumpMaker(self,logFile,strPos,endPos,fromdb,todb): 
-        dumpString = self.mysqlClientPath + "/bin/mysqlbinlog %s/%s --start-position=%d --stop-position=%d --rewrite-db='%s->%s' > %s"
-        fileString = self.logDumpPath + '/%s.%s'
-        fileName = fileString % (logFile,strPos)
-        dumpCommand = dumpString % (self.binlogPath,logFile,int(strPos),int(endPos),fromdb,todb,fileName)
-        # print(dumpCommand)
+        dumpString = self.mysqlClientPath + "/bin/mysqlbinlog %s/%s --start-position=%d --stop-position=%d --rewrite-db='%s->%s' --base64-output=DECODE-ROWS -v"
+        dumpCommand = dumpString % (self.binlogPath,logFile,int(strPos),int(endPos),fromdb,todb)
+        
         try:
-            os.system(dumpCommand)
+            result = subprocess.run(dumpCommand,stdout=subprocess.PIPE,shell=True)
+            deResult = result.stdout.decode('utf-8')
+            queryParsor = re.compile(r'###.*',re.M)
+            data = queryParsor.findall(deResult)
+
+            queryDic = {}
+            for idx,stricQuery in enumerate(data):
+                data[idx] = stricQuery.replace('###','').strip()
+                data[idx] = data[idx].split("=",1)
+
+                if len(data[idx]) == 1:
+                    data[idx] = data[idx][0]
+
+            queryDiv = data[0].split(" ",1)
+            queryDic["div"] = queryDiv[0]
+            queryDic["Target"] = queryDiv[1].replace("`","")
+
+            if queryDic["div"] == "DELETE" or queryDic["div"] == "INSERT":
+                table = queryDic["Target"].split(" ",1)
+                queryDic["Target"] = table[1]
+
+                del data[:2]
+                colDic = {}
+                for cols in data:
+                    colDic[cols[0]] = cols[1]
+
+                queryDic["data"] = colDic        
+            elif queryDic["div"] == "UPDATE":            
+                del data[:1]
+
+                colDic = {}
+                conDic = {}
+
+                for cols in data:   
+                    if cols == 'WHERE':
+                        setDiv = 0
+                    elif cols =="SET":
+                        setDiv = 1
+
+                    if setDiv == 0:
+                        if cols != 'WHERE':
+                            conDic[cols[0]] = cols[1]
+                    elif setDiv == 1:
+                        if cols != 'SET':
+                            colDic[cols[0]] = cols[1]
+
+                queryDic["data"] = colDic
+                queryDic["condition"] = conDic
+
+            queryDic["strPos"] = strPos
+            queryDic["endPos"] = endPos
+            queryDic["File"] = logFile
+
+            return queryDic
         except Exception as dumperr:
             print(dumperr)
-        
-class logRunner:
-    def __init__(self,mysqlPath,**kwargs):
-        self.mysqlClientPath = mysqlPath
-        self.targetConf = {
-            'host':kwargs['ip'],
-            'port':kwargs['port'],
-            'user':kwargs['user'],
-            'password':kwargs['passwd'],
-            'dumpPath':kwargs['dumppath']                      
-        }
 
-    def eventSorted(self):
-        eggList = os.listdir(self.targetConf['dumpPath'])        
-        if eggList:
-            for idx,eggname in enumerate(eggList):
-                eggList[idx] = eggname.split('.')
-            
-            eggList = sorted(eggList,key = lambda x : (x[1],int(x[2])))
+"""
+Table Config Json LOAD
+"""
+class tableConfLoader:
+    def __init__(self,confPath):
+        self.tableConfigFile = confPath
+        with open(self.tableConfigFile) as jsonFile:
+            jsonData = json.load(jsonFile)
+            self.tableAllconf = dict(jsonData)
+         
+    def getTableList(self):
+        tableList = list(self.tableAllconf.keys())        
+        return tableList
 
-            for idx,eggname in enumerate(eggList):
-                eggList[idx] = '.'.join(eggname)
-        
-        return eggList
+    def getAllTableConf(self):
+        return self.tableAllconf
 
-    def eventRunner(self,dataList,cdcPath,endFile):
-        runString = self.mysqlClientPath + "/bin/mysql -u%s -p'%s' --host=%s --port=%s < %s/%s"
-        fileInfo = cdcPath + "/" + endFile
-        endF = open(fileInfo,'w')
-        for eventNm in dataList:
-            runCommand = runString % (self.targetConf['user'],self.targetConf['password'],self.targetConf['host'],self.targetConf['port'],self.targetConf['dumpPath'],eventNm)            
-            try:            
-                os.system(runCommand)
-                eggPath = self.targetConf['dumpPath'] + '/' + str(eventNm)
+"""
+Event Dict using Make Query
+"""
+class dataExcuter:
+    def queryMaker(self,queueData,tableConf):
+        setSourceNm = queueData["Target"].split(".")
 
-                if os.path.isfile(eggPath):
-                    os.remove(eggPath)            
+        # Change Info
+        for mainKey in tableConf.keys():
+            if setSourceNm[1] == mainKey:
+                runTarget = setSourceNm[0]+"."+tableConf[mainKey][0]["targetName"]
+
+                # Query Set
+                if queueData["div"] == "DELETE":
+                    setQueryStr = "DELETE FROM %s where %s"
+                    setWhereDiv = []
+                    for idx,(key, value) in enumerate(queueData["data"].items()):                        
+                        if tableConf[mainKey][0]["targetColumn"][idx] != "":
+                            if value == "NULL":
+                                condition = tableConf[mainKey][0]["targetColumn"][idx] + " is null"
+                                setWhereDiv.append(condition)
+                            else:
+                                condition = tableConf[mainKey][0]["targetColumn"][idx] + "=" + value
+                                setWhereDiv.append(condition)
+                            
+                    
+                    setWhere = " and ".join(setWhereDiv)
+
+                    setQuery = setQueryStr % (runTarget,setWhere)
+                    return setQuery+";"
+
+                elif queueData["div"] == "INSERT":
+                    setQueryStr = "INSERT INTO %s (%s) values (%s)"
+                    setKeysDiv = []
+                    setValueDiv = []
+                    for idx,(key, value) in enumerate(queueData["data"].items()):
+                        if tableConf[mainKey][0]["targetColumn"][idx] != "":
+                            setKeysDiv.append(tableConf[mainKey][0]["targetColumn"][idx])
+                            setValueDiv.append(value)
                 
-                endF.write(eventNm+"\n")
+                    setKeys = ",".join(setKeysDiv)
+                    setValue = ",".join(setValueDiv)
 
-            except Exception as binaryRemoverERR:
-                print(binaryRemoverERR)
+                    setQuery = setQueryStr % (runTarget,setKeys,setValue)
+                    return setQuery+";"
+                
+                elif queueData["div"] == "UPDATE":
+                    setQueryStr = "UPDATE %s SET %s WHERE %s"
+                    setDataDiv = []
+                    setWhereDiv = []
 
-        endF.close()
+                    for idx,(key, value) in enumerate(queueData["data"].items()): 
+                        if tableConf[mainKey][0]["targetColumn"][idx] != "":
+                            setSQL = tableConf[mainKey][0]["targetColumn"][idx] + "=" + value
+                            setDataDiv.append(setSQL)
+                        
+                    for idx,(key, value) in enumerate(queueData["condition"].items()):  
+                        if tableConf[mainKey][0]["targetColumn"][idx] != "":
+                            if value == "NULL":
+                                condition = tableConf[mainKey][0]["targetColumn"][idx] + " is null"
+                                setWhereDiv.append(condition)
+                            else:
+                                condition = tableConf[mainKey][0]["targetColumn"][idx] + "=" + value
+                                setWhereDiv.append(condition)                            
+
+                    setData = ",".join(setDataDiv)
+                    setWhere = " and ".join(setWhereDiv)
+
+                    setQuery = setQueryStr % (runTarget,setData,setWhere)
+
+                    return setQuery +";"
+
+
+    def queryReplacer(self,queueData,tableConf):
+        setSourceNm = queueData["Target"].split(".")
+        
+        for mainKey in tableConf.keys():
+            if setSourceNm[1] == mainKey:
+                modrunTarget = setSourceNm[0]+"."+tableConf[mainKey][0]["targetName"]
+
+                setQueryStr = "REPLACE INTO %s (%s) values (%s)"
+                setKeysDiv = []
+                setValueDiv = []
+                for idx,(key, value) in enumerate(queueData["data"].items()):
+                    if tableConf[mainKey][0]["targetColumn"][idx] != "":
+                        setKeysDiv.append(tableConf[mainKey][0]["targetColumn"][idx])
+                        setValueDiv.append(value)
+            
+                setKeys = ",".join(setKeysDiv)
+                setValue = ",".join(setValueDiv)
+
+                setQuery = setQueryStr % (modrunTarget,setKeys,setValue)
+                return setQuery+";"
+                
+"""
+Etc File Maker
+"""                
+class FileMaker:
+    def __init__(self,posFile,pidFile):
+        self.endPosFile = posFile
+        self.cdcPidFile = pidFile
+    def posMake(self,logFile,endPos):
+        with open(self.endPosFile,"w") as ep:
+            ep.write("Last Searching File : " + logFile + "\n")
+            ep.write("Last Searching Position : " + str(endPos) + "\n")
+
+    def pidMake(self,pid):
+        with open(self.cdcPidFile,"w") as pf:
+            pf.write(str(pid))
+
+    def pidKill(self):
+        with open(self.cdcPidFile,"r") as pf:
+            pid = pf.read()
+
+        killCmd = "kill %s" % pid
+        os.system(killCmd)
+        os.remove(self.cdcPidFile)

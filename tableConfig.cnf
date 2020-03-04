@@ -1,0 +1,16 @@
+{
+    "sbtest1": [
+        {
+            "Column" : ["id","k","c","pad"],
+            "targetName" : "sbtest_1",
+            "targetColumn" : ["id","k","c","pad"]
+        }
+    ],
+    "sbtest2": [
+        {
+            "Column" : ["id","k","c","pad"],
+            "targetName" : "sbtest_2",
+            "targetColumn" : ["id","k","",""]
+        }
+    ]
+}

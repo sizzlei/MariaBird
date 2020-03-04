@@ -7,16 +7,15 @@ DBUSER = bird
 DBPASS = Bird123!@#
 
 [BIRD]
-BASE_PATH = /home/sigongweb/server/birdcdc
 MYSQL_CLIENT_PATH = /home/sigongweb/server/mariadb
 BINARYLOG_PATH = /log/binary_log
-DUMPFILE_PATH = /home/sigongweb/server/birdcdc/dump
+TABLE_CONF = /home/sigongweb/server/birdcdc/tableConfig.cnf
+END_POS_FILE = /home/sigongweb/server/birdcdc/birdEndpos.log
+PID_FILE = /home/sigongweb/server/birdcdc/birdcdc.pid
+LOG_FILE = /home/sigongweb/server/birdcdc/cdc.log
 
 [REPL]
-BINARY_FILE = maridb-bin.000020
-BINARY_POS = 514752818
+BINARY_FILE = maridb-bin.000021
+BINARY_POS = 401552817
 TODB = etc2
-
-[CONDITION]
-DATABASE = etc
-TABLES = sbtest1,sbtest2
+FROMDB = etc
