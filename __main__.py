@@ -121,7 +121,6 @@ if __name__ == '__main__':
         
         # Load Table Config
         tableConfig = tableCond.getAllTableConf()
-
         # Target Connection
         targetDB = {
                     'host':dbConf['target_ip'],
@@ -136,39 +135,41 @@ if __name__ == '__main__':
 
         while True:
             # Query Queue Load
-            querySet = queryQueue.get()      
-
-            # Query Maker  
-            queryString = eventWorker.queryMaker(querySet,tableConfig)
-            # Debug 
-            # print(querySet)
-            # print(querySet['File']+" StartPos = "+str(querySet['strPos'])+ " EndPos = "+str(querySet['endPos']))        
-            try:          
-                # Run Query
-                tcur.execute(queryString,params=None) 
-                # print(querySet["div"] + " Affetch Count : " + str(tcur.rowcount))
+            querySet = queryQueue.get()
+            for queueQuery in querySet:
+                # Query Maker  
+                queryString = eventWorker.queryMaker(queueQuery,tableConfig)
                 
-                # raise Error
-                if querySet["div"] != "DELETE" and tcur.rowcount == 0:
-                    raise ValueError()
-            except Exception as DataRunnerErr:
-                # UPDATE / INSERT -> REPLACE INTO
-                if querySet["div"] != "DELETE" and tcur.rowcount == 0:
-                    mainLogger.err("EventDataRunner")
+                # Debug 
+                # mainLogger.info(queueQuery)
+                
+                try:          
+                    # Run Query
+                    tcur.execute(queryString,params=None) 
+                    # mainLogger.info(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
+                    # mainLogger.info(queueQuery["div"] + " Affetch Count : " + str(tcur.rowcount))
+                    
+                    # raise Error
+                    if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:
+                        raise ValueError()
+                except Exception as DataRunnerErr:
+                    # UPDATE / INSERT -> REPLACE INTO
+                    mainLogger.err("EventDataRunner")    
                     mainLogger.err(DataRunnerErr)
-                    mainLogger.err(querySet['File']+" StartPos = "+str(querySet['strPos'])+ " EndPos = "+str(querySet['endPos']))        
-                    mainLogger.err("Exception Handler====================================")
-                    mainLogger.err("Origin Query : " + queryString)
+                    if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:                                            
+                        mainLogger.err(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
+                        mainLogger.err("Exception Handler====================================")
+                        mainLogger.err("Origin Query : " + queryString)
 
-                    # Exception Main Exe
-                    preQueryString = eventWorker.queryReplacer(querySet,tableConfig)                
-                    tcur.execute(preQueryString,params=None) 
+                        # Exception Main Exe
+                        preQueryString = eventWorker.queryReplacer(queueQuery,tableConfig)                
+                        tcur.execute(preQueryString,params=None) 
 
-                    mainLogger.err("Exception Query : " + preQueryString)
-                    mainLogger.err(querySet["div"] + " Exception Affetch Count : " + str(tcur.rowcount))
-                    mainLogger.err("=================================================")
-            
-            
+                        mainLogger.err("Exception Query : " + preQueryString)
+                        mainLogger.err(queueQuery["div"] + " Exception Affetch Count : " + str(tcur.rowcount))
+                        mainLogger.err("=================================================")
+                
+                
 
                 
         # Connection Close
@@ -212,12 +213,16 @@ if __name__ == '__main__':
 
     # Service Start
     if argv.status == "start" or argv.status == "START":
-        try:            
-            # Daemon Process
-            cdcDaemon()
-        except Exception as startErr:
-            print(startErr)
+        if os.path.isfile(birdConf['pid_file']):
+            print("[ Fail ] BirdCDC Stop Running.")
             sys.exit()
+        else:
+            try:            
+                # Daemon Process
+                cdcDaemon()
+            except Exception as startErr:
+                print(startErr)
+                sys.exit()
 
     # Service Stop
     elif argv.status == "stop" or argv.status == "STOP":

@@ -139,56 +139,74 @@ class logDumper:
             deResult = result.stdout.decode('utf-8')
             queryParsor = re.compile(r'###.*',re.M)
             data = queryParsor.findall(deResult)
-
-            queryDic = {}
+                        
             for idx,stricQuery in enumerate(data):
-                data[idx] = stricQuery.replace('###','').strip()
+                data[idx] = stricQuery.replace('###','',1).strip()
                 data[idx] = data[idx].split("=",1)
 
                 if len(data[idx]) == 1:
                     data[idx] = data[idx][0]
 
-            queryDiv = data[0].split(" ",1)
-            queryDic["div"] = queryDiv[0]
-            queryDic["Target"] = queryDiv[1].replace("`","")
 
-            if queryDic["div"] == "DELETE" or queryDic["div"] == "INSERT":
-                table = queryDic["Target"].split(" ",1)
-                queryDic["Target"] = table[1]
+            queryPack = []                   
+            divLen = data[0]
+            makeList = []
+            
+            setCol = 0
+            for idx, dataSub in enumerate(data):
+                if dataSub == divLen:
+                    setCol += 1
+            
+            # Query Length
+            setQueryIdx = len(data) / setCol
 
-                del data[:2]
-                colDic = {}
-                for cols in data:
-                    colDic[cols[0]] = cols[1]
+            # Save And Div Query
+            strIdx = 0
+            for queryIdx in range(1,setCol+1):   
+                endIdx = setQueryIdx * queryIdx             
+                makeList.append(data[int(strIdx):int(endIdx)])
+                strIdx = endIdx
+            
+            for inIdx, inData in enumerate(makeList):    
+                queryDic = {}     
+                queryDiv = inData[0].split(" ")            
+                queryDic["div"] = queryDiv[0]
+                queryDic["Target"] = queryDiv[-1].replace("`","")            
 
-                queryDic["data"] = colDic        
-            elif queryDic["div"] == "UPDATE":            
-                del data[:1]
+                if queryDic["div"] == "DELETE" or queryDic["div"] == "INSERT": 
+                    del inData[:2]
+                    colDic = {}
+                    for cols in inData:
+                        colDic[cols[0]] = cols[1]
 
-                colDic = {}
-                conDic = {}
+                    queryDic["data"] = colDic    
+                elif queryDic["div"] == "UPDATE":            
+                    del inData[:1]
+                    colDic = {}
+                    conDic = {}
 
-                for cols in data:   
-                    if cols == 'WHERE':
-                        setDiv = 0
-                    elif cols =="SET":
-                        setDiv = 1
+                    for cols in inData:   
+                        if cols == 'WHERE':
+                            setDiv = 0
+                        elif cols =="SET":
+                            setDiv = 1
 
-                    if setDiv == 0:
-                        if cols != 'WHERE':
-                            conDic[cols[0]] = cols[1]
-                    elif setDiv == 1:
-                        if cols != 'SET':
-                            colDic[cols[0]] = cols[1]
+                        if setDiv == 0:
+                            if cols != 'WHERE':
+                                conDic[cols[0]] = cols[1]
+                        elif setDiv == 1:
+                            if cols != 'SET':                           
+                                colDic[cols[0]] = cols[1]
 
-                queryDic["data"] = colDic
-                queryDic["condition"] = conDic
-
-            queryDic["strPos"] = strPos
-            queryDic["endPos"] = endPos
-            queryDic["File"] = logFile
-
-            return queryDic
+                    queryDic["data"] = colDic
+                    queryDic["condition"] = conDic  
+                    
+                queryDic["strPos"] = strPos
+                queryDic["endPos"] = endPos
+                queryDic["File"] = logFile  
+                queryPack.append(queryDic)  
+                
+            return queryPack
         except Exception as dumperr:
             print(dumperr)
 
@@ -215,7 +233,6 @@ Event Dict using Make Query
 class dataExcuter:
     def queryMaker(self,queueData,tableConf):
         setSourceNm = queueData["Target"].split(".")
-
         # Change Info
         for mainKey in tableConf.keys():
             if setSourceNm[1] == mainKey:
@@ -283,6 +300,7 @@ class dataExcuter:
 
 
     def queryReplacer(self,queueData,tableConf):
+        print(queueData)
         setSourceNm = queueData["Target"].split(".")
         
         for mainKey in tableConf.keys():

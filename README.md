@@ -145,3 +145,4 @@ optional arguments:
 Source Database 와 Target Database에는 아래의 권한을 가진 계정이 존재해야합니다. 
 #### Source Database : ``` select, replication client, replication slave ```
 #### Target Database : ``` select, update, insert, delete ```
+
