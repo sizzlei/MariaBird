@@ -131,52 +131,48 @@ if __name__ == '__main__':
 
         tcon = mysql.connector.connect(**targetDB)    
         tcon.autocommit = True
-        tcur = tcon.cursor()  
-
+        
         while True:
+            tcur = tcon.cursor()  
             # Query Queue Load
             querySet = queryQueue.get()
-            if querySet:
-                for queueQuery in querySet:
-                    # Query Maker  
-                    queryString = eventWorker.queryMaker(queueQuery,tableConfig)
-                    
-                    # Debug 
-                    # mainLogger.info(queueQuery)
-                    
-                    try:          
-                        # Run Query
-                        tcur.execute(queryString,params=None) 
-                        # mainLogger.info(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
-                        # mainLogger.info(queueQuery["div"] + " Affetch Count : " + str(tcur.rowcount))
-                        
-                        # raise Error
-                        if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:
-                            raise ValueError()
-                    except Exception as DataRunnerErr:
-                        # UPDATE / INSERT -> REPLACE INTO
-                        mainLogger.err("EventDataRunner")    
-                        mainLogger.err(DataRunnerErr)
-                        if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:                                            
-                            mainLogger.err(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
-                            mainLogger.err("Exception Handler====================================")
-                            mainLogger.err("Origin Query : " + queryString)
-
-                            # Exception Main Exe
-                            preQueryString = eventWorker.queryReplacer(queueQuery,tableConfig)                
-                            tcur.execute(preQueryString,params=None) 
-
-                            mainLogger.err("Exception Query : " + preQueryString)
-                            mainLogger.err(queueQuery["div"] + " Exception Affetch Count : " + str(tcur.rowcount))
-                            mainLogger.err("=================================================")
-            else:
-                tcur.execute("select 1",params=None)   
-                time.sleep(3)          
+            for queueQuery in querySet:
+                # Query Maker  
+                queryString = eventWorker.queryMaker(queueQuery,tableConfig)
                 
-
+                # Debug 
+                # mainLogger.info(queueQuery)
                 
-        # Connection Close
-        tcur.close()
+                try:          
+                    # Run Query
+                    tcur.execute(queryString,params=None) 
+                    # mainLogger.info(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
+                    # mainLogger.info(queueQuery["div"] + " Affetch Count : " + str(tcur.rowcount))
+                    
+                    # raise Error
+                    if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:
+                        raise ValueError()
+                except Exception as DataRunnerErr:
+                    # UPDATE / INSERT -> REPLACE INTO
+                    mainLogger.err("EventDataRunner")    
+                    mainLogger.err(DataRunnerErr)
+                    if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:                                            
+                        mainLogger.err(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
+                        mainLogger.err("Exception Handler====================================")
+                        mainLogger.err("Origin Query : " + queryString)
+
+                        # Exception Main Exe
+                        preQueryString = eventWorker.queryReplacer(queueQuery,tableConfig)                
+                        tcur.execute(preQueryString,params=None) 
+
+                        mainLogger.err("Exception Query : " + preQueryString)
+                        mainLogger.err(queueQuery["div"] + " Exception Affetch Count : " + str(tcur.rowcount))
+                        mainLogger.err("=================================================")
+       
+            tcur.execute("select 1",params=None)   
+            tcur.close()     
+                
+        # Connection Close        
         tcon.close()  
             
     """
