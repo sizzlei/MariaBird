@@ -300,7 +300,6 @@ class dataExcuter:
 
 
     def queryReplacer(self,queueData,tableConf):
-        print(queueData)
         setSourceNm = queueData["Target"].split(".")
         
         for mainKey in tableConf.keys():

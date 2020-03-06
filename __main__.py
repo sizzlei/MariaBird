@@ -7,6 +7,7 @@ import sys
 import mysql.connector
 import argparse
 
+
 if __name__ == '__main__':
     argParm = argparse.ArgumentParser()
     argParm.add_argument("--config",help="Configure File Path.")
@@ -118,10 +119,8 @@ if __name__ == '__main__':
     """
     def EventRunner():
         mainLogger.info("[ OK ] Binary Event Query Runner.")
-        
-        # Load Table Config
-        tableConfig = tableCond.getAllTableConf()
-        # Target Connection
+
+            # Target Connection
         targetDB = {
                     'host':dbConf['target_ip'],
                     'port':dbConf['target_port'],
@@ -129,56 +128,60 @@ if __name__ == '__main__':
                     'password':dbConf['dbpass']                     
                 }
 
-        tcon = mysql.connector.connect(**targetDB)    
-        tcon.autocommit = True
         
+        
+        # Load Table Config
+        tableConfig = tableCond.getAllTableConf()
+                
         while True:
-            tcur = tcon.cursor()  
+            
             # Query Queue Load
             querySet = queryQueue.get()
-            for queueQuery in querySet:
-                # Query Maker  
-                queryString = eventWorker.queryMaker(queueQuery,tableConfig)
-                
-                # Debug 
-                # mainLogger.info(queueQuery)
-                
-                try:          
-                    # Run Query
-                    tcur.execute(queryString,params=None) 
-                    # mainLogger.info(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
-                    # mainLogger.info(queueQuery["div"] + " Affetch Count : " + str(tcur.rowcount))
+            if querySet:
+                tcon = mysql.connector.connect(**targetDB)        
+                tcur = tcon.cursor(buffered=True) 
+                for queueQuery in querySet:
+                    # Query Maker  
+                    queryString = eventWorker.queryMaker(queueQuery,tableConfig)
                     
-                    # raise Error
-                    if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:
-                        raise ValueError()
-                except Exception as DataRunnerErr:
-                    # UPDATE / INSERT -> REPLACE INTO
-                    mainLogger.err("EventDataRunner")    
-                    mainLogger.err(DataRunnerErr)
-                    if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:                                            
-                        mainLogger.err(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
-                        mainLogger.err("Exception Handler====================================")
-                        mainLogger.err("Origin Query : " + queryString)
+                    # Debug 
+                    # mainLogger.info(queueQuery)
+                    
+                    try:          
+                        # Run Query
+                        tcur.execute(queryString,params=None) 
+                        # mainLogger.info(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
+                        # mainLogger.info(queueQuery["div"] + " Affetch Count : " + str(tcur.rowcount))
+                        
+                        # raise Error
+                        if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:
+                            raise ValueError()
+                    except Exception as DataRunnerErr:
+                        # UPDATE / INSERT -> REPLACE INTO
+                        mainLogger.err("EventDataRunner")    
+                        mainLogger.err(DataRunnerErr)
+                        if queueQuery["div"] != "DELETE" and tcur.rowcount == 0:                                            
+                            mainLogger.err(queueQuery['File']+" StartPos = "+str(queueQuery['strPos'])+ " EndPos = "+str(queueQuery['endPos']))        
+                            mainLogger.err("Exception Handler====================================")
+                            mainLogger.err("Origin Query : " + queryString)
 
-                        # Exception Main Exe
-                        preQueryString = eventWorker.queryReplacer(queueQuery,tableConfig)                
-                        tcur.execute(preQueryString,params=None) 
+                            # Exception Main Exe
+                            preQueryString = eventWorker.queryReplacer(queueQuery,tableConfig)                
+                            tcur.execute(preQueryString,params=None) 
 
-                        mainLogger.err("Exception Query : " + preQueryString)
-                        mainLogger.err(queueQuery["div"] + " Exception Affetch Count : " + str(tcur.rowcount))
-                        mainLogger.err("=================================================")
-       
-            tcur.execute("select 1",params=None)   
-            tcur.close()     
-                
-        # Connection Close        
-        tcon.close()  
+                            mainLogger.err("Exception Query : " + preQueryString)
+                            mainLogger.err(queueQuery["div"] + " Exception Affetch Count : " + str(tcur.rowcount))
+                            mainLogger.err("=================================================")
+        
+                tcon.commit()
+                tcur.close()  
+                # Connection Close        
+                tcon.close()  
             
     """
     Main Thread
     """
-    def mainThread():
+    def mainThread():     
         try:
             # Thread Configure
             dataLoader = threading.Thread(target=EventDataLoader,args=(repl['binary_file'],repl['binary_pos']))
