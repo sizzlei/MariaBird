@@ -34,7 +34,7 @@ if __name__ == '__main__':
     tableCond = nest.tableConfLoader(birdConf['table_conf'])
     tableConf = tableCond.getTableList() 
     LogWorker = nest.binlogParser(repl['fromdb'],tableConf)
-    eventWorker = nest.dataExcuter()
+    eventWorker = nest.dataExecuter()
     fileWorker = nest.FileMaker(birdConf["end_pos_file"],birdConf['pid_file'])
     mainLogger = nest.logwriter(birdConf["log_file"],5)
 

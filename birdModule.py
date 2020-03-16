@@ -230,7 +230,7 @@ class tableConfLoader:
 """
 Event Dict using Make Query
 """
-class dataExcuter:
+class dataExecuter:
     def queryMaker(self,queueData,tableConf):
         setSourceNm = queueData["Target"].split(".")
         # Change Info
